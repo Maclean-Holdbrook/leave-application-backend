@@ -246,10 +246,38 @@ exports.createStaffAccount = async (req, res, next) => {
       );
     }
 
+    // Store credentials for admin reference
+    await pool.query(
+      'INSERT INTO staff_credentials (user_id, name, email, plaintext_password, role, department, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [user.id, name, email, password, role, department, req.user.id]
+    );
+
     res.status(201).json({
       success: true,
       message: 'Staff account created successfully',
       data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all staff credentials
+// @route   GET /api/admin/credentials
+// @access  Private/Admin
+exports.getAllCredentials = async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT sc.*, u.name as created_by_name
+       FROM staff_credentials sc
+       LEFT JOIN users u ON sc.created_by = u.id
+       ORDER BY sc.created_at DESC`
+    );
+
+    res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
     });
   } catch (error) {
     next(error);

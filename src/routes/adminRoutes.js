@@ -6,7 +6,8 @@ const {
   updateLeaveBalance,
   getUserBalance,
   getStatistics,
-  createStaffAccount
+  createStaffAccount,
+  getAllCredentials
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -20,5 +21,6 @@ router.put('/users/:userId/role', updateUserRole);
 router.get('/users/:userId/balance', getUserBalance);
 router.put('/users/:userId/balance', updateLeaveBalance);
 router.get('/statistics', getStatistics);
+router.get('/credentials', getAllCredentials);
 
 module.exports = router;
