@@ -5,7 +5,8 @@ const {
   updateUserRole,
   updateLeaveBalance,
   getUserBalance,
-  getStatistics
+  getStatistics,
+  createStaffAccount
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -14,6 +15,7 @@ router.use(protect);
 router.use(authorize('admin'));
 
 router.get('/users', getAllUsers);
+router.post('/users', createStaffAccount);
 router.put('/users/:userId/role', updateUserRole);
 router.get('/users/:userId/balance', getUserBalance);
 router.put('/users/:userId/balance', updateLeaveBalance);

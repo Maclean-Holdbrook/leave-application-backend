@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const bcrypt = require('bcryptjs');
 
 // @desc    Get all users
 // @route   GET /api/admin/users
@@ -179,6 +180,76 @@ exports.getStatistics = async (req, res, next) => {
         requests: requestsStats.rows[0],
         departments: parseInt(departmentsCount.rows[0].count)
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create staff account
+// @route   POST /api/admin/users
+// @access  Private/Admin
+exports.createStaffAccount = async (req, res, next) => {
+  try {
+    const { name, email, password, role, department } = req.body;
+
+    // Validate input
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide name, email, password, and role'
+      });
+    }
+
+    // Validate role
+    const validRoles = ['employee', 'manager', 'admin'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be employee, manager, or admin'
+      });
+    }
+
+    // Check if user exists
+    const userExists = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (userExists.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists'
+      });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user
+    const result = await pool.query(
+      'INSERT INTO users (name, email, password, role, department) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, department, created_at',
+      [name, email, hashedPassword, role, department]
+    );
+
+    const user = result.rows[0];
+
+    // Initialize leave balances for new user
+    const currentYear = new Date().getFullYear();
+    const leaveTypes = await pool.query('SELECT id, days_per_year FROM leave_types');
+
+    for (const leaveType of leaveTypes.rows) {
+      await pool.query(
+        'INSERT INTO leave_balances (user_id, leave_type_id, total_days, used_days, remaining_days, year) VALUES ($1, $2, $3, $4, $5, $6)',
+        [user.id, leaveType.id, leaveType.days_per_year, 0, leaveType.days_per_year, currentYear]
+      );
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Staff account created successfully',
+      data: user
     });
   } catch (error) {
     next(error);
